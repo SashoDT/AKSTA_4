@@ -113,14 +113,18 @@ server <- function(input, output, session) {
   
   # Global Boxplot
   output$boxplot_global <- renderPlotly({
-    gg <- ggplot(data, aes(y = !!sym(input$var_univ))) +
+    filtered_data <- data %>% filter(!is.na(.data[[input$var_univ]]))
+    gg <- ggplot(filtered_data, aes(y = .data[[input$var_univ]])) +
       geom_boxplot() + ylab(input$var_univ)
     ggplotly(gg)
   })
   
   # Global Histogram + Density
   output$hist_global <- renderPlotly({
-    gg <- ggplot(data, aes(x = !!sym(input$var_univ))) +
+    filtered_data <- data %>%
+      filter(!is.na(.data[[input$var_univ]]),
+             is.finite(.data[[input$var_univ]]))
+    gg <- ggplot(filtered_data, aes(x = !!sym(input$var_univ))) +
       geom_histogram(aes(y = ..density..), bins = 30, fill = "skyblue", alpha = 0.7) +
       geom_density(color = "blue", size = 1.2)
     ggplotly(gg)
@@ -128,14 +132,18 @@ server <- function(input, output, session) {
   
   # Boxplot by Continent
   output$boxplot_cont <- renderPlotly({
-    gg <- ggplot(data, aes(x = Continent, y = !!sym(input$var_univ))) +
+    filtered_data <- data %>%
+      filter(!is.na(.data[[input$var_univ]]), is.finite(.data[[input$var_univ]]))
+    gg <- ggplot(filtered_data, aes(x = Continent, y = !!sym(input$var_univ))) +
       geom_boxplot() + xlab("Continent") + ylab(input$var_univ)
     ggplotly(gg)
   })
   
   # Density by Continent
   output$density_cont <- renderPlotly({
-    gg <- ggplot(data, aes(x = !!sym(input$var_univ), color = Continent)) +
+    filtered_data <- data %>%
+      filter(!is.na(.data[[input$var_univ]]), is.finite(.data[[input$var_univ]]))
+    gg <- ggplot(filtered_data, aes(x = !!sym(input$var_univ), color = Continent)) +
       geom_density() + xlab(input$var_univ)
     ggplotly(gg)
   })
@@ -144,28 +152,29 @@ server <- function(input, output, session) {
   output$scatter_plot <- renderPlotly({
     req(input$xvar, input$yvar, input$sizevar)
     
+    filtered_data <- data %>%
+      filter(!is.na(.data[[input$xvar]]),
+             !is.na(.data[[input$yvar]]))
+    
     size_var <- input$sizevar
     
-    gg <- ggplot(data, aes(
+    gg <- ggplot(filtered_data, aes(
       x = .data[[input$xvar]],
       y = .data[[input$yvar]],
       color = .data[["Continent"]],
       size = .data[[size_var]]
     )) +
-      geom_point(aes(
-        text = paste(
-          "Country:", country
-        )
-      ), alpha = 0.7) +
+      geom_point(alpha = 0.7) +
       
       geom_smooth(
-        data = data,
+        method = "loess",
+        formula = y ~ x,
+        data = filtered_data,
         mapping = aes(
           x = .data[[input$xvar]],
           y = .data[[input$yvar]],
           color = .data[["Continent"]]
         ),
-        method = "loess",
         se = FALSE,
         inherit.aes = FALSE
       ) +
@@ -178,7 +187,7 @@ server <- function(input, output, session) {
         y = input$yvar
       )
     
-    ggplotly(gg)
+    ggplotly(gg, tooltip = c("x", "y", "color", "size", "country"))
   })
 }
 
