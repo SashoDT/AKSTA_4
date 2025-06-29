@@ -1,4 +1,4 @@
-packages_needed <- c("shiny", "tidyverse", "plotly", "DT", "countrycode", "viridis", "jsonlite", "here")
+packages_needed <- c("shiny", "tidyverse", "plotly", "DT", "countrycode", "viridis", "jsonlite", "here", "maps")
 
 for (pkg in packages_needed) {
   if (!requireNamespace(pkg, quietly = TRUE)) {
@@ -103,12 +103,17 @@ server <- function(input, output, session) {
   # Map Plot
   output$map_plot <- renderPlotly({
     req(input$var_univ)
-    gg <- ggplot(data_merged, aes(x = long, y = lat, group = group)) +
+    
+    # Determine the country name column
+    country_col <- if ("region" %in% colnames(data_merged)) "region" else if ("country" %in% colnames(data_merged)) "country" else NULL
+    req(country_col, "No country name column found in data_merged")
+    
+    gg <- ggplot(data_merged, aes(x = long, y = lat, group = group,text = paste("Country:", region))) +
       geom_polygon(aes(fill = !!sym(input$var_univ)), color = "white") +
       scale_fill_viridis_c(option = "D") +
       labs(fill = input$var_univ) +
       theme_void()
-    ggplotly(gg, tooltip = c("region", input$var_univ))
+    ggplotly(gg, tooltip = c("text", "fill")) 
   })
   
   # Global Boxplot
@@ -162,6 +167,7 @@ server <- function(input, output, session) {
       x = .data[[input$xvar]],
       y = .data[[input$yvar]],
       color = .data[["Continent"]],
+      text = paste("Country:", country),
       size = .data[[size_var]]
     )) +
       geom_point(alpha = 0.7) +
@@ -187,7 +193,7 @@ server <- function(input, output, session) {
         y = input$yvar
       )
     
-    ggplotly(gg, tooltip = c("x", "y", "color", "size", "country"))
+    ggplotly(gg, tooltip = c("x", "y", "color", "size", "text"))
   })
 }
 
